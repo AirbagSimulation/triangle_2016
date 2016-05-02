@@ -43,7 +43,7 @@ double damp_k_normal = 20;
 double dv = 3.0;
 double node_Radius = 0.08;
 double View_from[3] = { 0.0, 50.0, 50.0 };
-double View_to[3] = { 0.0, -15.0, 0.0 };
+double View_to[3] = { -50.0, 0.0, 0.0 };
 double View_from2[3] = { 0.0, 13.0, 0.01 };
 double View_to2[3] = { 0.0, -10.0, 0.0 };
 double View_from3[3] = { 0.0, 13.0, 0.01 };
@@ -56,12 +56,14 @@ bool View_point_flag = false;
 //追加変数
 double last_mouse_x;
 double last_mouse_y;
-double last_mouse_z;
 bool drag_mouse_r = false;
 bool drag_mouse_l = false;
-double ratio_x; //比率
-double ratio_y;
-double ratio_z; //ズーム比率
+double ratio_x; //x,y軸を中心とする回転量
+double ratio_y; 
+double ratio_dis; //ズーム量
+double camera_x = -30.0; //x,y軸を中心とする回転角度
+double camera_y = -30.0;
+double camera_dis = 15.0; //中心からのカメラの距離
 				//
 
 GLUnurbsObj *theNurb;
@@ -148,43 +150,39 @@ void sphere(double R, double precise, GLfloat sph_col[10]) {
 
 	gluSphere(sphere, R, precise, precise);
 }
-void View_control(double ratio_x) { //xz平面
-	double View_distance;
-	double temp[5];
-	temp[2] = View_from[2] - View_to[2];
-	temp[1] = View_from[0] - View_to[0];
-	temp[0] = pow(temp[1], 2.0) + pow(temp[2], 2.0);
-	View_distance = pow(temp[0], 0.5); //三平方の定理(xz平面における2点間(視点ー注点)の距離)
-	temp[0] = View_from[2] - View_to[2]; //2点間のy座標の差
-	temp[3] = temp[0] / View_distance;
-	temp[1] = View_from[0] - View_to[0];
-	temp[4] = temp[1] / View_distance;
-	temp[2] = atan2(temp[4], temp[3]); //temp[2]=θ(z:横軸,x:縦軸)
-									   /*if (vector_flag) temp[2] = temp[2] + 0.01;
-									   else temp[2] = temp[2] - 0.01;*/
-	temp[2] = temp[2] + ratio_x;
-	temp[0] = View_distance * cos(temp[2]);
-	temp[1] = View_distance * sin(temp[2]);
-	View_from[2] = View_to[2] + temp[0];
-	View_from[0] = View_to[0] + temp[1];
+void View_control(double ratio_y) { //y軸（横
+	// 現在の変換行列の右側に、今回の回転変換をかける
+	glMatrixMode(GL_MODELVIEW);
+	glRotatef(ratio_y, 0.0, 1.0, 0.0);
 }
-void View_control_up_down(double ratio_y) { //xy平面->yz
-	double View_distance;
-	double temp[5];
-	temp[2] = View_from[1] - View_to[1];
-	temp[1] = View_from[2] - View_to[2];
-	temp[0] = pow(temp[1], 2.0) + pow(temp[2], 2.0);
-	View_distance = pow(temp[0], 0.5);
-	temp[0] = View_from[1] - View_to[1];
-	temp[3] = temp[0] / View_distance;
-	temp[1] = View_from[2] - View_to[2];
-	temp[4] = temp[1] / View_distance;
-	temp[2] = atan2(temp[3]/*cos*/, temp[4]);
-	temp[2] = temp[2] + ratio_y;
-	temp[0] = View_distance * cos(temp[2]);
-	temp[1] = View_distance * sin(temp[2]);
-	View_from[1] = View_to[1] + temp[1];
-	View_from[2] = View_to[2] + temp[0];
+void View_control_up_down(double ratio_x) { //x軸（縦
+	// 現在の変換行列を取得
+	float  m[16];
+	float  tx, ty, tz;
+	glGetFloatv(GL_MODELVIEW_MATRIX, m);
+
+	// 現在の変換行列の平行移動成分を記録
+	tx = m[12];
+	ty = m[13];
+	tz = m[14];
+
+	// 現在の変換行列の平行移動成分を０にする
+	m[12] = 0.0f;
+	m[13] = 0.0f;
+	m[14] = 0.0f;
+
+	// 変換行列を初期化
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	// カメラの平行移動行列を設定
+	glTranslatef(tx, ty, tz);
+
+	// 右側に、今回の回転変換をかける
+	glRotatef(ratio_x, 1.0, 0.0, 0.0);
+
+	// さらに、右側に、もとの変換行列から平行移動成分をとり除いたものをかける
+	glMultMatrixf(m);
 }
 void initiation() {
 
@@ -649,6 +647,7 @@ void node_simulation(int view_con) {
 		else {
 			glMaterialfv(GL_FRONT, GL_DIFFUSE, blue2);
 		}
+		//物体を描画(三角形)
 		glBegin(GL_TRIANGLES);
 		//printf("%f %f %f %f\n", blue[0], blue[1], blue[2], blue[3]);
 		if (1) {
@@ -669,14 +668,11 @@ void display(void)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glLoadIdentity();
-	//新マウス操作
-	if (drag_mouse_l) {
-		View_control(ratio_x);
-		View_control_up_down(ratio_y);
-	}
-	else if (drag_mouse_r) {
-		View_from[2] = View_from[2] + ratio_z;
-	}
+	//
+	glTranslatef(0.0, 0.0, -camera_dis);
+	glRotatef(-camera_x, 1.0, 0.0, 0.0);
+	glRotatef(-camera_y, 0.0, 1.0, 0.0);
+	//
 	gluLookAt(View_from[0], View_from[1], View_from[2],
 		View_to[0], View_to[1], View_to[2],
 		0.0, 1.0, 0.0);
@@ -690,6 +686,26 @@ void display(void)
 }
 //新マウス操作(ドラッグの検出)
 void mouse(int button, int state, int x, int y) {
+	//右ボタンのドラッグ検出
+	if ((button == GLUT_LEFT_BUTTON) && (state == GLUT_DOWN)) {
+		drag_mouse_l = 1;
+	}
+	else if ((button == GLUT_LEFT_BUTTON) && (state == GLUT_UP)) {
+		drag_mouse_l = 0;
+	}
+
+	//左ボタンのドラッグ検出
+	if ((button == GLUT_RIGHT_BUTTON) && (state == GLUT_DOWN)) {
+		drag_mouse_r = 1;
+	}
+	else if ((button == GLUT_RIGHT_BUTTON) && (state == GLUT_UP)) {
+		drag_mouse_r = 0;
+	}
+
+	//現在のマウス座標の記録
+	last_mouse_x = x;
+	last_mouse_y = y;
+	/*
 	switch (button) { //ドラッグの検知
 	case GLUT_LEFT_BUTTON:
 		if (state == GLUT_DOWN) {
@@ -709,16 +725,47 @@ void mouse(int button, int state, int x, int y) {
 	default:
 		break;
 	}
+	*/
 }
 //ドラッグ時の挙動
 void motion(int x, int y) {
 	if (drag_mouse_l == 1) {
-		ratio_x = (x - last_mouse_x) * 0.0001;
-		ratio_y = (y - last_mouse_y) * 0.0001;
+		//y軸中心回転（横
+		ratio_y -= (x - last_mouse_x) * 1.0;
+		if (camera_x < -90.0) camera_x = -90.0;
+		//x軸中心回転（縦
+		ratio_x -= (y - last_mouse_y) * 1.0;
+		if (camera_y < 0.0) camera_y += 360.0;
+		else if (camera_y > 360.0) camera_y -= 360.0;
 	}
+	//z軸
 	else if (drag_mouse_r == 1) {
-		ratio_z = (x - last_mouse_z) * 0.01;
+		//マウスの横移動に応じてカメラの距離を移動
+		ratio_dis = (x - last_mouse_x) * 1.0;
+		//マウスの横移動に応じて距離を移動
+		camera_dis += ratio_dis * 0.01;
+		if (camera_dis < 5.0) camera_dis = 5.0;
+		//現在の変換行列（カメラの向き）を取得
+		float m[16];
+		glGetFloatv(GL_MODELVIEW_MATRIX, m);
+
+		// 変換行列を初期化して、カメラ移動分の平行移動行列を設定
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glTranslatef(0.0, 0.0, -ratio_dis);
+
+		// 右からこれまでの変換行列をかける
+		glMultMatrixf(m);
+
 	}
+	//カメラ操作
+	if (drag_mouse_l) {
+		View_control(ratio_y);
+		View_control_up_down(ratio_x);
+	}
+	//現在のマウス位置の記録
+	last_mouse_x = x;
+	last_mouse_y = y;
 }
 
 void resize(int w, int h)
