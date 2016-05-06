@@ -54,16 +54,16 @@ bool MouseFlagMiddle = false;
 bool View_point_flag = false;
 
 //追加変数
-double last_mouse_x;
-double last_mouse_y;
+float last_mouse_x;
+float last_mouse_y;
 bool drag_mouse_r = false;
 bool drag_mouse_l = false;
-double ratio_x; //x,y軸を中心とする回転量
-double ratio_y; 
-double ratio_dis; //ズーム量
-double camera_x = -30.0; //x,y軸を中心とする回転角度
-double camera_y = -30.0;
-double camera_dis = 15.0; //中心からのカメラの距離
+float ratio_x; //x,y軸を中心とする回転量
+float ratio_y; 
+float ratio_dis; //ズーム量
+float camera_x = -30.0; //x,y軸を中心とする回転角度
+float camera_y = -30.0;
+float camera_dis = 50.0; //中心からのカメラの距離
 				//
 
 GLUnurbsObj *theNurb;
@@ -149,40 +149,6 @@ void sphere(double R, double precise, GLfloat sph_col[10]) {
 	gluQuadricDrawStyle(sphere, GLU_FILL);
 
 	gluSphere(sphere, R, precise, precise);
-}
-void View_control(double ratio_y) { //y軸（横
-	// 現在の変換行列の右側に、今回の回転変換をかける
-	glMatrixMode(GL_MODELVIEW);
-	glRotatef(ratio_y, 0.0, 1.0, 0.0);
-}
-void View_control_up_down(double ratio_x) { //x軸（縦
-	// 現在の変換行列を取得
-	float  m[16];
-	float  tx, ty, tz;
-	glGetFloatv(GL_MODELVIEW_MATRIX, m);
-
-	// 現在の変換行列の平行移動成分を記録
-	tx = m[12];
-	ty = m[13];
-	tz = m[14];
-
-	// 現在の変換行列の平行移動成分を０にする
-	m[12] = 0.0f;
-	m[13] = 0.0f;
-	m[14] = 0.0f;
-
-	// 変換行列を初期化
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-
-	// カメラの平行移動行列を設定
-	glTranslatef(tx, ty, tz);
-
-	// 右側に、今回の回転変換をかける
-	glRotatef(ratio_x, 1.0, 0.0, 0.0);
-
-	// さらに、右側に、もとの変換行列から平行移動成分をとり除いたものをかける
-	glMultMatrixf(m);
 }
 void initiation() {
 
@@ -670,13 +636,10 @@ void display(void)
 	glLoadIdentity();
 	//
 	glTranslatef(0.0, 0.0, -camera_dis);
-	glRotatef(-camera_x, 1.0, 0.0, 0.0);
-	glRotatef(-camera_y, 0.0, 1.0, 0.0);
+	glRotatef(-camera_x, 0.0, 1.0, 0.0);
+	glRotatef(-camera_y, 1.0, 0.0, 0.0);
 	//
-	gluLookAt(View_from[0], View_from[1], View_from[2],
-		View_to[0], View_to[1], View_to[2],
-		0.0, 1.0, 0.0);
-	glViewport(0, 0, w_view * 2.0 / 3.0, h_view);
+	glViewport(0, 0, w_view, h_view);
 	glPushMatrix();
 	node_simulation(1);
 	glPopMatrix();
@@ -705,46 +668,66 @@ void mouse(int button, int state, int x, int y) {
 	//現在のマウス座標の記録
 	last_mouse_x = x;
 	last_mouse_y = y;
-	/*
-	switch (button) { //ドラッグの検知
-	case GLUT_LEFT_BUTTON:
-		if (state == GLUT_DOWN) {
-			drag_mouse_l = 1;
-			last_mouse_x = x; //マウスの最終位置(click時)の記録
-			last_mouse_y = y;
-		}
-		else drag_mouse_l = 0;
-		break;
-	case GLUT_RIGHT_BUTTON:
-		if (state == GLUT_DOWN) {
-			drag_mouse_r = 1;
-			last_mouse_z = x;
-		}
-		else drag_mouse_r = 0;
-		break;
-	default:
-		break;
-	}
-	*/
 }
 //ドラッグ時の挙動
 void motion(int x, int y) {
-	if (drag_mouse_l == 1) {
-		//y軸中心回転（横
-		ratio_y -= (x - last_mouse_x) * 1.0;
-		if (camera_x < -90.0) camera_x = -90.0;
-		//x軸中心回転（縦
-		ratio_x -= (y - last_mouse_y) * 1.0;
-		if (camera_y < 0.0) camera_y += 360.0;
-		else if (camera_y > 360.0) camera_y -= 360.0;
+	//y軸
+	if (drag_mouse_l) {
+		//y軸中心回転（縦回転
+		camera_x -= (x - last_mouse_x) * 0.5;
+		if (camera_x < 0.0) camera_x += 360.0;
+		else if (camera_x > 360.0) camera_x -= 360.0;
+		// マウスの横移動に応じてＹ軸を中心に回転
+		float  ratio_x = (x - last_mouse_x) * 0.5;
+
+		// 現在の変換行列の右側に、今回の回転変換をかける
+		glMatrixMode(GL_MODELVIEW);
+		glRotatef(ratio_x, 0.0, 1.0, 0.0);
+	}
+	//x軸
+	if (drag_mouse_l) {
+		//x軸中心回転（横回転
+		camera_y -= (y - last_mouse_y) * 0.5;
+		if (camera_y > 360.0) camera_y -= 360.0;
+		else if (camera_y < 0.0) camera_y += 360.0;
+		// マウスの縦移動に応じてＸ軸を中心に回転
+		float  ratio_y = (y - last_mouse_y) * 0.5;
+
+		// 現在の変換行列を取得
+		float  m[16];
+		float  tx, ty, tz;
+		glGetFloatv(GL_MODELVIEW_MATRIX, m);
+
+		// 現在の変換行列の平行移動成分を記録
+		tx = m[12];
+		ty = m[13];
+		tz = m[14];
+
+		// 現在の変換行列の平行移動成分を０にする
+		m[12] = 0.0f;
+		m[13] = 0.0f;
+		m[14] = 0.0f;
+
+		// 変換行列を初期化
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+
+		// カメラの平行移動行列を設定
+		glTranslatef(tx, ty, tz);
+
+		// 右側に、今回の回転変換をかける
+		glRotatef(ratio_y, 1.0, 0.0, 0.0);
+
+		// さらに、右側に、もとの変換行列から平行移動成分をとり除いたものをかける
+		glMultMatrixf(m);
 	}
 	//z軸
-	else if (drag_mouse_r == 1) {
+	if (drag_mouse_r) {
+		//マウスの横移動に応じて距離を移動
+		camera_dis += ratio_dis * 0.2;
+		if (camera_dis < 5.0) camera_dis = 5.0;
 		//マウスの横移動に応じてカメラの距離を移動
 		ratio_dis = (x - last_mouse_x) * 1.0;
-		//マウスの横移動に応じて距離を移動
-		camera_dis += ratio_dis * 0.01;
-		if (camera_dis < 5.0) camera_dis = 5.0;
 		//現在の変換行列（カメラの向き）を取得
 		float m[16];
 		glGetFloatv(GL_MODELVIEW_MATRIX, m);
@@ -757,11 +740,6 @@ void motion(int x, int y) {
 		// 右からこれまでの変換行列をかける
 		glMultMatrixf(m);
 
-	}
-	//カメラ操作
-	if (drag_mouse_l) {
-		View_control(ratio_y);
-		View_control_up_down(ratio_x);
 	}
 	//現在のマウス位置の記録
 	last_mouse_x = x;

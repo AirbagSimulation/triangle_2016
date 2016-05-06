@@ -2,6 +2,6 @@
 c:\users\lab\documents\visual studio 2015\projects\triangle_sim\triangle_2016\triangle_sim\main.cpp(25): warning C4838: 'double' から 'GLfloat' への変換には縮小変換が必要です
 c:\users\lab\documents\visual studio 2015\projects\triangle_sim\triangle_2016\triangle_sim\main.cpp(26): warning C4838: 'double' から 'GLfloat' への変換には縮小変換が必要です
 c:\users\lab\documents\visual studio 2015\projects\triangle_sim\triangle_2016\triangle_sim\main.cpp(28): warning C4838: 'double' から 'GLfloat' への変換には縮小変換が必要です
-c:\users\lab\documents\visual studio 2015\projects\triangle_sim\triangle_2016\triangle_sim\main.cpp(476): warning C4101: 'pressure': ローカル変数は 1 度も使われていません。
+c:\users\lab\documents\visual studio 2015\projects\triangle_sim\triangle_2016\triangle_sim\main.cpp(442): warning C4101: 'pressure': ローカル変数は 1 度も使われていません。
   triangle_sim.vcxproj -> C:\Users\LAB\Documents\Visual Studio 2015\Projects\triangle_sim\triangle_2016\triangle_sim\Debug\triangle_sim.exe
   triangle_sim.vcxproj -> C:\Users\LAB\Documents\Visual Studio 2015\Projects\triangle_sim\triangle_2016\triangle_sim\Debug\triangle_sim.pdb (Partial PDB)
